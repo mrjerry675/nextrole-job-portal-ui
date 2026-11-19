@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "widths": [
+    1440,
+    1024,
+    768,
+    390,
+    360
+  ],
+  "checks": [
+    "Search by skill, category, location, experience and remote filters",
+    "Combined filters and empty states",
+    "Sort and pagination",
+    "Saved jobs and persistence",
+    "Job details and section navigation",
+    "Required fields and URL validation",
+    "Draft saving, reload, and deletion",
+    "File type and size checks",
+    "Real file selection and reselection after reload",
+    "Sample resume and review editing",
+    "Consent and local confirmation",
+    "Duplicate application prevention",
+    "Mobile filters and navigation",
+    "No page-level horizontal overflow"
+  ],
+  "javascriptErrors": []
+}

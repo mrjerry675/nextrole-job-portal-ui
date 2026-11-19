@@ -1,0 +1,9 @@
+Completed another UI/UX internship task at Internee.pk!
+
+I designed Nextrole, a responsive job portal prototype that makes the journey from job search to application simpler. It includes useful filters, detailed role pages, saved jobs, and a guided application form with resume selection and a final review step.
+
+Sharing a few desktop and mobile screens below!
+
+GitHub: https://github.com/mrjerry675/nextrole-job-portal-ui
+
+#InterneePK #UIUXDesign #Internship #ResponsiveDesign #JobPortal

@@ -1,0 +1,39 @@
+NEXTROLE — RESPONSIVE JOB PORTAL UI
+Fakiha Younas · Internee.pk internship project
+
+OPEN THE PROTOTYPE
+Extract the full project ZIP and open index.html in Chrome or Edge.
+No installation or server is required. Open handoff.html for the guide.
+
+TRY THE JOURNEY
+Search or filter jobs > View role > Apply for this role.
+Enter sample details > Continue > choose experience and a resume.
+You can use the labeled sample resume without providing a personal file.
+Review application > confirm the demo notice > Submit demo application.
+Visit My applications for the confirmation or to continue a saved draft.
+All roles are fictional. No application or file is sent to an employer.
+
+FIGMA
+In the Figma desktop app, open a Design file.
+Plugins > Development > Import plugin from manifest.
+Choose figma-plugin/manifest.json, then run Nextrole — Responsive Job Portal.
+21 editable screens, 5 component sets, and 2 named prototype flows are included.
+Compilation and structural checks pass; native Figma execution is unverified.
+No file has been created in your Figma account.
+
+SCREENSHOTS AND POST
+docs/linkedin/ — five branded images, upload in numerical order.
+docs/screenshots/ — nine original desktop and mobile screenshots.
+LINKEDIN_POST.txt — brief internship caption with repository link.
+docs/showcase.html — open locally to view the presentation.
+
+GITHUB
+https://github.com/mrjerry675/nextrole-job-portal-ui
+
+DEVELOPMENT
+npm ci
+npm test
+npm run figma:build
+npm run test:figma
+npm run screenshots
+python package-project.py

@@ -1,0 +1,9 @@
+node_modules/
+test-downloads/
+*.zip
+!Nextrole_Figma_Generator.zip
+.env*
+*.log
+.DS_Store
+Thumbs.db
+previews/

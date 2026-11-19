@@ -1,0 +1,21 @@
+{
+  "project": "Nextrole",
+  "author": "Fakiha Younas",
+  "linkedin": {
+    "count": 5,
+    "width": 1600,
+    "height": 1440,
+    "files": [
+      "linkedin/01-job-listings.png",
+      "linkedin/02-job-details.png",
+      "linkedin/03-application-form.png",
+      "linkedin/04-application-review.png",
+      "linkedin/05-responsive-mobile.png"
+    ]
+  },
+  "originals": {
+    "count": 9,
+    "scale": 2
+  },
+  "javascriptErrors": []
+}

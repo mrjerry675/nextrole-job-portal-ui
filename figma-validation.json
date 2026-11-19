@@ -1,0 +1,12 @@
+{
+  "status": "PASS",
+  "scope": "API mock, component and route validation, approximate width checks. Native Figma execution is still required.",
+  "screens": 21,
+  "desktopScreens": 13,
+  "mobileScreens": 8,
+  "componentSets": 5,
+  "navigationReactions": 179,
+  "interactiveVariantReactions": 55,
+  "flowStarts": 2,
+  "scrolling": "All screen roots use vertical prototype scrolling."
+}

@@ -1,0 +1,264 @@
+"use strict";
+/// <reference types="@figma/plugin-typings" />
+// Editable native layers, variants, and prepared prototype states. No image imports.
+const C = { green: '#174F40', ink: '#21332D', text: '#65746D', line: '#E1E8E1', bg: '#F7F9F6', white: '#FFFFFF', soft: '#EFF4EB', lime: '#D9EDAC', error: '#A23439' };
+const paint = (hex) => ({ type: 'SOLID', color: { r: parseInt(hex.slice(1, 3), 16) / 255, g: parseInt(hex.slice(3, 5), 16) / 255, b: parseInt(hex.slice(5, 7), 16) / 255 } });
+const transition = { type: 'SMART_ANIMATE', duration: .25, easing: { type: 'EASE_OUT' } };
+let page;
+const screens = {}, components = {};
+const links = [];
+function text(value, size = 16, weight = 'Regular', color = C.text, width) { const n = figma.createText(); n.name = value.slice(0, 60); n.fontName = { family: 'Inter', style: weight }; n.fontSize = size; n.characters = value; n.fills = [paint(color)]; n.lineHeight = { unit: 'PERCENT', value: 145 }; if (width) {
+    n.resize(width, size * 1.45);
+    n.textAutoResize = 'HEIGHT';
+}
+else
+    n.textAutoResize = 'WIDTH_AND_HEIGHT'; return n; }
+function frame(name, w, axis = 'VERTICAL', bg, pad = 0, gap = 16, h) { const f = figma.createFrame(); f.name = name; f.resize(w, h || 1); f.layoutMode = axis; f.primaryAxisSizingMode = axis === 'HORIZONTAL' ? 'FIXED' : h ? 'FIXED' : 'AUTO'; f.counterAxisSizingMode = axis === 'HORIZONTAL' && !h ? 'AUTO' : 'FIXED'; f.paddingLeft = f.paddingRight = f.paddingTop = f.paddingBottom = pad; f.itemSpacing = gap; f.fills = bg ? [paint(bg)] : []; f.clipsContent = false; return f; }
+function add(p, ...nodes) { nodes.forEach(n => p.appendChild(n)); return p; }
+function row(name, w, nodes, gap = 16) { const f = frame(name, w, 'HORIZONTAL', undefined, 0, gap); f.counterAxisAlignItems = 'CENTER'; return add(f, ...nodes); }
+function card(name, w, pad = 24, bg = C.white, gap = 18) { const f = frame(name, w, 'VERTICAL', bg, pad, gap); f.cornerRadius = 12; f.strokes = [paint(C.line)]; return f; }
+function bind(n, to) { links.push({ node: n, to }); return n; }
+function rule(w) { const n = figma.createRectangle(); n.name = 'Divider'; n.resize(w, 1); n.fills = [paint(C.line)]; return n; }
+function tag(label, bg = C.soft, ink = C.green) { const t = text(label, 12, 'Regular', ink); const f = frame('Tag / ' + label, t.width + 20, 'HORIZONTAL', bg, 10, 0); f.paddingTop = f.paddingBottom = 5; f.cornerRadius = 5; return add(f, t); }
+function logo(mark = 'L', bg = '#DFEEDD', ink = '#315E3D', size = 44) { const f = frame('Company mark / ' + mark, size, 'HORIZONTAL', bg, 0, 0, size); f.cornerRadius = 10; f.primaryAxisAlignItems = f.counterAxisAlignItems = 'CENTER'; return add(f, text(mark, 25, 'Bold', ink)); }
+function instance(key, label) { const n = components[key].createInstance(); if (label !== undefined)
+    n.findOne(x => x.type === 'TEXT').characters = label; return n; }
+function button(label, to, secondary = false, w) { const n = instance('Button/' + (secondary ? 'Secondary' : 'Primary') + '/Default', label); n.name = 'Button / ' + label; const t = n.findOne(x => x.type === 'TEXT'); n.resize(w || Math.max(100, t.width + 40), 44); if (to)
+    bind(n, to); return n; }
+function field(label, value, w, to, error = false, tall = false) { const f = frame('Field / ' + label, w, 'VERTICAL', undefined, 0, 8); const n = instance('Input/' + (error ? 'Error' : value ? 'Filled' : 'Default'), value || 'Enter ' + label.toLowerCase()); n.resize(w, tall ? 100 : 46); const t = n.findOne(x => x.type === 'TEXT'); t.resize(w - 26, 20); t.textAutoResize = 'HEIGHT'; if (to)
+    bind(n, to); add(f, text(label, 14, 'Semi Bold', C.ink), n); if (error)
+    add(f, text('Please complete this field.', 13, 'Regular', C.error, w)); return f; }
+async function makeComponents() {
+    const sets = [];
+    const buttons = [];
+    for (const kind of ['Primary', 'Secondary'])
+        for (const state of ['Default', 'Hover', 'Disabled']) {
+            const secondary = kind === 'Secondary';
+            const f = frame('Style=' + kind + ', State=' + state, 170, 'HORIZONTAL', secondary ? (state === 'Hover' ? C.soft : C.white) : (state === 'Hover' ? '#103E32' : C.green), 20, 0, 44);
+            f.primaryAxisAlignItems = f.counterAxisAlignItems = 'CENTER';
+            f.cornerRadius = 8;
+            if (secondary)
+                f.strokes = [paint('#D6E1D6')];
+            if (state === 'Disabled')
+                f.opacity = .45;
+            add(f, text('Continue', 14, 'Semi Bold', secondary ? C.green : C.white));
+            const c = figma.createComponentFromNode(f);
+            components[`Button/${kind}/${state}`] = c;
+            buttons.push(c);
+        }
+    sets.push({ name: 'Button', nodes: buttons });
+    const inputs = [];
+    for (const state of ['Default', 'Focus', 'Error', 'Filled']) {
+        const f = frame('State=' + state, 300, 'HORIZONTAL', C.white, 13, 0, 46);
+        f.counterAxisAlignItems = 'CENTER';
+        f.cornerRadius = 8;
+        f.strokes = [paint(state === 'Error' ? '#BB6870' : state === 'Focus' ? '#739B55' : C.line)];
+        f.strokeWeight = state === 'Focus' ? 2 : 1;
+        add(f, text(state === 'Filled' ? 'Fakiha Younas' : 'Enter your details', 14, 'Regular', state === 'Filled' ? C.ink : C.text));
+        const c = figma.createComponentFromNode(f);
+        components['Input/' + state] = c;
+        inputs.push(c);
+    }
+    sets.push({ name: 'Input', nodes: inputs });
+    for (const kind of ['Checkbox', 'Bookmark']) {
+        const nodes = [];
+        for (const state of ['Off', 'On']) {
+            const f = frame('State=' + state, kind === 'Checkbox' ? 22 : 36, 'HORIZONTAL', state === 'On' ? C.green : C.white, 0, 0, kind === 'Checkbox' ? 22 : 36);
+            f.primaryAxisAlignItems = f.counterAxisAlignItems = 'CENTER';
+            f.cornerRadius = kind === 'Checkbox' ? 4 : 8;
+            f.strokes = [paint(state === 'On' ? C.green : '#CBD8C5')];
+            add(f, text(kind === 'Checkbox' ? (state === 'On' ? '✓' : ' ') : (state === 'On' ? '★' : '☆'), kind === 'Checkbox' ? 14 : 21, 'Semi Bold', state === 'On' ? C.white : C.green));
+            const c = figma.createComponentFromNode(f);
+            components[kind + '/' + state] = c;
+            nodes.push(c);
+        }
+        sets.push({ name: kind, nodes });
+    }
+    const steps = [];
+    for (const state of ['Upcoming', 'Current', 'Done']) {
+        const f = frame('State=' + state, 30, 'HORIZONTAL', state === 'Current' ? C.green : state === 'Done' ? C.soft : C.white, 0, 0, 30);
+        f.cornerRadius = 15;
+        f.primaryAxisAlignItems = f.counterAxisAlignItems = 'CENTER';
+        f.strokes = [paint(C.line)];
+        add(f, text(state === 'Done' ? '✓' : '1', 13, 'Semi Bold', state === 'Current' ? C.white : C.green));
+        const c = figma.createComponentFromNode(f);
+        components['Step/' + state] = c;
+        steps.push(c);
+    }
+    sets.push({ name: 'Step', nodes: steps });
+    sets.forEach((s, i) => { const set = figma.combineAsVariants(s.nodes, page); set.name = s.name; set.x = i * 900; set.y = -650; set.layoutMode = 'VERTICAL'; set.primaryAxisSizingMode = 'AUTO'; set.counterAxisSizingMode = 'AUTO'; set.paddingLeft = set.paddingRight = set.paddingTop = set.paddingBottom = 20; set.itemSpacing = 14; });
+    async function change(from, to, trigger) { await components[from].setReactionsAsync([{ trigger: { type: trigger }, actions: [{ type: 'NODE', destinationId: components[to].id, navigation: 'CHANGE_TO', transition }] }]); }
+    for (const kind of ['Primary', 'Secondary'])
+        await change(`Button/${kind}/Default`, `Button/${kind}/Hover`, 'ON_HOVER');
+    for (const kind of ['Checkbox', 'Bookmark']) {
+        await change(kind + '/Off', kind + '/On', 'ON_CLICK');
+        await change(kind + '/On', kind + '/Off', 'ON_CLICK');
+    }
+    await change('Input/Default', 'Input/Focus', 'ON_CLICK');
+}
+function shell(id, mobile = false) {
+    const w = mobile ? 390 : 1440;
+    const root = frame('Nextrole / ' + id, w, 'VERTICAL', C.bg, 0, 0, mobile ? 844 : 1000);
+    root.clipsContent = true;
+    root.overflowDirection = 'VERTICAL';
+    screens[id] = root;
+    const nav = frame('Navigation', w, 'HORIZONTAL', C.white, mobile ? 20 : 80, mobile ? 18 : 48, mobile ? 70 : 82);
+    nav.paddingTop = nav.paddingBottom = 0;
+    nav.counterAxisAlignItems = 'CENTER';
+    add(nav, bind(text('▦  nextrole.', mobile ? 25 : 28, 'Bold', C.green), mobile ? 'M1' : 'D1'));
+    if (mobile)
+        add(nav, bind(text('Find jobs', 14, 'Semi Bold', C.green), 'M1'));
+    else
+        add(nav, bind(text('Find a job', 14, 'Semi Bold', C.green), 'D1'), bind(text('Saved jobs', 14), 'D12'), bind(text('Your application', 14), 'D13'), text('Fakiha Younas', 14, 'Semi Bold', C.ink));
+    add(root, nav);
+    const main = frame('Page content', w, 'VERTICAL', undefined, mobile ? 20 : 80, 24);
+    main.paddingTop = mobile ? 24 : 32;
+    main.paddingBottom = 40;
+    add(root, main);
+    return { root, main, w: mobile ? 350 : 1280, mobile };
+}
+const jobs = [{ title: 'Junior Product Designer', company: 'Luma Studio', mark: 'L', location: 'Lahore · Hybrid', level: 'Entry level', salary: 'PKR 70k–110k', desc: 'Turn thoughtful ideas into simple, delightful digital experiences.' }, { title: 'Frontend Developer', company: 'Orbit Labs', mark: 'O', location: 'Remote', level: 'Entry level', salary: 'PKR 90k–150k', desc: 'Build fast, accessible interfaces for products used every day.' }, { title: 'UI/UX Design Intern', company: 'Northstar', mark: '✳', location: 'Islamabad · On-site', level: 'Internship', salary: 'PKR 25k–40k', desc: 'Learn by doing, with real design briefs and thoughtful mentorship.' }, { title: 'Content & Social Executive', company: 'Bloom Digital', mark: 'b', location: 'Karachi · Hybrid', level: 'Entry level', salary: 'PKR 55k–85k', desc: 'Tell meaningful stories and help a growing community find its voice.' }];
+function jobCard(j, w, mobile = false) { const f = card('Job / ' + j.title, w, 22); const inner = w - 44; add(f, row('Company identity', inner, [logo(j.mark), text(j.company, 14, 'Semi Bold', C.ink, inner - 44 - 36 - 24), instance('Bookmark/Off')], 12)); const title = text(j.title, 21, 'Semi Bold', C.ink, inner); if (j.mark === 'L')
+    bind(title, mobile ? 'M3' : 'D4'); add(f, title, text(j.location, 14), text(j.desc, 16, 'Regular', C.text, inner), row('Role tags', inner, [tag(j.level === 'Internship' ? 'Internship' : 'Full-time'), tag(j.level)], 8), rule(inner), text(j.salary + ' / month', 14, 'Semi Bold', C.ink)); if (j.mark === 'L')
+    add(f, button('View role', mobile ? 'M3' : 'D4', true, inner)); return f; }
+function filters(w, mobile = false, selected = false) { const f = card('Filters', w, 20); const inner = w - 40; add(f, text('Filters', 19, 'Semi Bold', C.ink), text('Job category', 14, 'Semi Bold', C.ink)); for (const category of ['Design', 'Development', 'Marketing', 'Data']) {
+    const line = row('Filter / ' + category, inner, [instance('Checkbox/' + (selected && category === 'Design' ? 'On' : 'Off')), text(category, 14)], 10);
+    if (category === 'Design')
+        bind(line, mobile ? 'M8' : selected ? 'D1' : 'D2');
+    add(f, line);
+} add(f, rule(inner), field('Location', 'All locations', inner, mobile ? 'M1' : 'D2'), text('Experience level', 14, 'Semi Bold', C.ink)); for (const level of ['Internship', 'Entry level', 'Mid level', 'Senior level'])
+    add(f, row('Experience / ' + level, inner, [instance('Checkbox/Off'), text(level, 14)], 10)); add(f, button(mobile ? 'Show opportunities' : 'Reset filters', mobile ? 'M8' : 'D1', true, inner)); return f; }
+function listings(id, mode = 'all', mobile = false) {
+    const s = shell(id, mobile);
+    const hero = card('Search hero', s.w, mobile ? 22 : 30, C.soft, 18);
+    add(hero, text('FIND WORK THAT FITS', 12, 'Semi Bold', '#5D7857'), text('Your next chapter\nstarts here.', mobile ? 35 : 47, 'Semi Bold', C.green, s.w - (mobile ? 44 : 60)), text('Find a role that fits your skills, your goals, and the way you want to work.', 16, 'Regular', C.text, s.w - (mobile ? 44 : 60)));
+    if (mobile) {
+        add(hero, field('Search roles', 'Job title or skill', 306, 'M2'), button('Find jobs', 'M2', false, 306));
+    }
+    else
+        add(hero, row('Search controls', s.w - 60, [field('What are you looking for?', mode === 'empty' ? 'Astronaut' : 'Job title, company, or skill', 730, 'D2'), field('Where?', 'All locations', 270, 'D2'), button('Find jobs', 'D2', false, 184)], 18));
+    add(s.main, hero);
+    if (mobile) {
+        add(s.main, button('Filters', 'M2', true, 350), text(mode === 'design' ? '3 design opportunities' : '12 opportunities for you', 23, 'Semi Bold', C.ink, 350), jobCard(jobs[0], 350, true), jobCard(mode === 'design' ? jobs[2] : jobs[1], 350, true));
+        return;
+    }
+    const columns = row('Browse layout', 1280, [], 28);
+    columns.counterAxisAlignItems = 'MIN';
+    add(columns, filters(240, false, mode === 'design'));
+    const results = frame('Job results', 1012, 'VERTICAL', undefined, 0, 20);
+    add(results, text(mode === 'empty' ? 'No matches just yet' : mode === 'design' ? '3 design opportunities' : '12 opportunities for you', 26, 'Semi Bold', C.ink), text('Good teams. Meaningful work. Your next step.', 15));
+    if (mode === 'empty') {
+        const c = card('Empty search', 1012, 40);
+        add(c, text('Give your filters a little more room.', 24, 'Semi Bold', C.ink), text('Try a different keyword or start again with all roles.', 16), button('Clear filters', 'D1'));
+        add(results, c);
+    }
+    else {
+        if (mode === 'design')
+            add(results, button('Design · clear filter', 'D1', true));
+        const selected = mode === 'design' ? [jobs[0], jobs[2], Object.assign(Object.assign({}, jobs[0]), { title: 'Brand Designer', company: 'Sunday Creative', mark: 's', location: 'Remote', level: 'Mid level', salary: 'PKR 120k–180k' })] : jobs;
+        for (let i = 0; i < selected.length; i += 2)
+            add(results, row('Job row ' + i, 1012, selected.slice(i, i + 2).map(j => jobCard(j, 496)), 20));
+        add(results, button('Try an empty search', 'D3', true));
+    }
+    add(columns, results);
+    add(s.main, columns);
+}
+function details(id, mobile = false) { const s = shell(id, mobile), w = mobile ? 350 : 888; add(s.main, bind(text('Find a job  /  Junior Product Designer', 13), mobile ? 'M1' : 'D1')); const main = frame('Role content', w, 'VERTICAL', undefined, 0, 22), head = card('Role identity', w, 24, C.soft); add(head, row('Company identity', w - 48, [logo('L'), text('Luma Studio', 16, 'Semi Bold', C.ink), instance('Bookmark/Off')], 16), text('Junior Product Designer', mobile ? 29 : 36, 'Semi Bold', C.ink, w - 48), text('Lahore · Hybrid · Full-time', 14), row('Skills', w - 48, [tag('Entry level'), tag('Figma'), tag('UI design')], 8)); add(main, head); if (mobile)
+    add(main, button('Apply for this role', 'M4', false, w)); const info = card('Role description', w, 24); add(info, text('A little about the role', 22, 'Semi Bold', C.ink), text('Join a collaborative design team that puts people first. Help shape web and mobile experiences, explore ideas with mentors, and turn research into clear interfaces.', 16, 'Regular', C.text, w - 48), text('What you’ll work on', 21, 'Semi Bold', C.ink), text('• Explore user needs through interviews and research.\n• Create wireframes, prototypes, and polished interfaces.\n• Work with developers on accessible experiences.\n• Share your process in friendly design reviews.', 16, 'Regular', C.text, w - 48), text('What you’ll bring', 21, 'Semi Bold', C.ink), text('• A portfolio that shows your thinking.\n• Figma, layout, and component skills.\n• Curiosity and openness to feedback.', 16, 'Regular', C.text, w - 48), text('Room to do your best work', 21, 'Semi Bold', C.ink), text('Hybrid work · Mentor support\nLearning budget · Flexible hours', 16, 'Regular', C.green, w - 48)); add(main, info); const aside = frame('Company and application', mobile ? 350 : 364, 'VERTICAL', undefined, 0, 20), aw = mobile ? 302 : 316; const apply = card('Application call to action', mobile ? 350 : 364, 24); add(apply, text('PKR 70k–110k', 26, 'Semi Bold', C.ink), text('Per month · Sample opportunity', 14), button('Apply for this role', mobile ? 'M4' : 'D5', false, aw), button('Save to shortlist', mobile ? 'M1' : 'D12', true, aw), text('About 3 minutes to complete.', 13)); const company = card('Meet Luma Studio', mobile ? 350 : 364, 24); add(company, text('Meet Luma Studio', 21, 'Semi Bold', C.ink), text('A small product design team building useful digital tools for growing businesses.', 16, 'Regular', C.text, aw), text('11–50 people\nDesign & technology\nLahore, Pakistan', 14, 'Regular', C.text, aw)); const steps = card('Application steps', mobile ? 350 : 364, 24); add(steps, text('A simple application', 21, 'Semi Bold', C.ink), text('1  Introduce yourself\n2  Share your experience\n3  Review and submit', 16, 'Regular', C.text, aw)); add(aside, apply, company, steps); if (mobile)
+    add(s.main, main, aside);
+else {
+    const columns = row('Role layout', 1280, [main, aside], 28);
+    columns.counterAxisAlignItems = 'MIN';
+    add(s.main, columns);
+} }
+function context(w) { const c = card('Application context', w, 24, C.soft); add(c, text('YOU’RE APPLYING FOR', 12, 'Semi Bold', C.green), logo(), text('Junior Product Designer', 23, 'Semi Bold', C.ink, w - 48), text('Luma Studio\nLahore · Hybrid\nEntry level · Full-time', 16, 'Regular', C.text, w - 48), rule(w - 48), text('PKR 70k–110k / month', 16, 'Semi Bold', C.ink, w - 48), text('Your story is more than a job title. Projects, coursework, and curiosity count too.', 16, 'Regular', C.text, w - 48), text('Practice application. Nothing is sent to a company.', 13, 'Regular', C.text, w - 48)); return c; }
+function apply(id, step = 0, filled = false, error = false, mobile = false) {
+    const s = shell(id, mobile);
+    add(s.main, bind(text('Back to Junior Product Designer', 13), mobile ? 'M3' : 'D4'), text('A small step toward\nsomething good.', mobile ? 31 : 37, 'Semi Bold', C.ink, s.w), text('You can save a draft along the way.', 16, 'Regular', C.text, s.w));
+    const w = mobile ? 350 : 888, pad = mobile ? 20 : 30, inner = w - pad * 2;
+    const editor = card('Application form', w, pad);
+    const steps = row('Application progress', inner, [], mobile ? 12 : 55);
+    ['Details', 'Experience', 'Review'].forEach((label, i) => { const c = instance('Step/' + (i === step ? 'Current' : i < step ? 'Done' : 'Upcoming'), i < step ? '✓' : String(i + 1)); const item = row('Step / ' + label, mobile ? Math.floor((inner - 24) / 3) : 210, [c, text(label, mobile ? 11 : 14, 'Regular', i === step ? C.green : C.text)], 6); if (i < step)
+        bind(item, mobile ? ['M4', 'M5', 'M6'][i] : ['D6', 'D9', 'D10'][i]); add(steps, item); });
+    add(editor, steps, rule(inner), text(['First, a little about you.', 'Bring your experience to life.', 'One final check.'][step], mobile ? 23 : 26, 'Semi Bold', C.ink, inner));
+    if (error)
+        add(editor, text('Please complete the highlighted fields.', 14, 'Regular', C.error, inner));
+    if (step === 0) {
+        const target = mobile ? 'M4' : 'D6';
+        const fields = [['Full name', filled ? 'Fakiha Younas' : ''], ['Email address', filled ? 'fakiha.younas@example.com' : ''], ['Phone number', filled ? '+92 300 1234567' : ''], ['Current city', filled ? 'Lahore' : '']];
+        if (mobile)
+            fields.forEach(([label, value]) => add(editor, field(label, value, inner, undefined, false)));
+        else
+            for (let i = 0; i < 4; i += 2)
+                add(editor, row('Details row ' + i, inner, fields.slice(i, i + 2).map(([label, value]) => field(label, value, (inner - 24) / 2, target, error)), 24));
+        add(editor, text('Your details stay in this browser prototype. Use sample details when exploring.', 13, 'Regular', C.text, inner), button('Continue', mobile ? 'M5' : filled ? 'D8' : 'D7', false, inner));
+    }
+    if (step === 1) {
+        add(editor, field('Experience level', filled ? 'Student / fresh graduate' : '', inner, mobile ? 'M5' : 'D9'), field('Portfolio (optional)', filled ? 'https://example.com/portfolio' : '', inner, mobile ? 'M5' : 'D9'));
+        const upload = card('Resume upload', inner, 20, C.soft);
+        add(upload, text(filled ? 'Sample_Candidate_Resume.pdf' : 'Your experience, in one place', 16, 'Semi Bold', C.ink, inner - 40), text(filled ? 'Sample resume · prototype demo' : 'PDF or DOCX · up to 5 MB', 13, 'Regular', C.text, inner - 40), button(filled ? 'Replace sample' : 'Try a sample resume', mobile ? 'M5' : 'D9', true, inner - 40));
+        add(editor, upload, field('Anything you’d like to share? (optional)', filled ? 'I enjoy turning research into clear, accessible interfaces.' : '', inner, mobile ? 'M5' : 'D9', false, true), text('Native Figma uses a prepared sample file. Real file selection works in the browser prototype.', 13, 'Regular', C.text, inner), button('Review application', mobile ? 'M6' : filled ? 'D10' : 'D9', false, inner));
+    }
+    if (step === 2) {
+        const summary = card('Review details', inner, 20);
+        add(summary, text('Your details', 18, 'Semi Bold', C.ink), text('Fakiha Younas\nfakiha.younas@example.com\n+92 300 1234567 · Lahore', 14, 'Regular', C.text, inner - 40), button('Edit details', mobile ? 'M4' : 'D6', true, inner - 40), rule(inner - 40), text('Your experience', 18, 'Semi Bold', C.ink), text('Student / fresh graduate\nSample_Candidate_Resume.pdf\nhttps://example.com/portfolio', 14, 'Regular', C.text, inner - 40), button('Edit experience', mobile ? 'M5' : 'D9', true, inner - 40));
+        add(editor, summary, row('Review confirmation', inner, [instance('Checkbox/On'), text('I understand that this is a demo application.', 13, 'Regular', C.text, inner - 36)], 14), button('Submit demo application', mobile ? 'M7' : 'D11', false, inner));
+    }
+    if (!mobile)
+        add(editor, button('Save draft · view sample', 'D13', true, inner));
+    if (mobile)
+        add(s.main, editor);
+    else {
+        const layout = row('Application layout', 1280, [editor, context(364)], 28);
+        layout.counterAxisAlignItems = 'MIN';
+        add(s.main, layout);
+    }
+}
+function success(id, mobile = false) { const s = shell(id, mobile); const c = card('Application confirmation', mobile ? 350 : 820, mobile ? 24 : 40); add(c, text('✓', 54, 'Bold', C.green), text('Your demo application\nis complete.', mobile ? 29 : 38, 'Semi Bold', C.ink, mobile ? 302 : 740), text('You’ve finished the journey for Junior Product Designer at Luma Studio. A local confirmation is saved; nothing is sent to an employer.', 16, 'Regular', C.text, mobile ? 302 : 740), rule(mobile ? 302 : 740), text('Candidate: Fakiha Younas\nStatus: Demo submitted\nReference: NR-DEMO-101', 16, 'Regular', C.text, mobile ? 302 : 740), button('Explore more roles', mobile ? 'M1' : 'D1', false, mobile ? 302 : 740)); add(s.main, c); }
+function saved() { const s = shell('D12'); add(s.main, text('A few possibilities worth keeping.', 36, 'Semi Bold', C.ink), text('A prepared shortlist example. The browser prototype saves your actual selections.', 16, 'Regular', C.text, 1280), jobCard(jobs[0], 500), button('Continue application', 'D6', true)); }
+function applicationList() { const s = shell('D13'); add(s.main, text('Every next step, in one place.', 36, 'Semi Bold', C.ink), text('Prepared draft example for this prototype flow.', 16)); const c = card('Draft application', 900, 28); add(c, text('Junior Product Designer', 24, 'Semi Bold', C.ink), text('Luma Studio ? Lahore', 16), tag('Draft ? not submitted'), button('Continue draft', 'D6')); add(s.main, c); }
+async function run() {
+    for (const style of ['Regular', 'Semi Bold', 'Bold'])
+        await figma.loadFontAsync({ family: 'Inter', style });
+    page = figma.createPage();
+    page.name = 'Nextrole · Responsive job portal';
+    await figma.setCurrentPageAsync(page);
+    page.backgrounds = [paint('#E9EEE7')];
+    await makeComponents();
+    listings('D1');
+    listings('D2', 'design');
+    listings('D3', 'empty');
+    details('D4');
+    apply('D5');
+    apply('D6', 0, true);
+    apply('D7', 0, false, true);
+    apply('D8', 1);
+    apply('D9', 1, true);
+    apply('D10', 2, true);
+    success('D11');
+    saved();
+    applicationList();
+    listings('M1', 'all', true);
+    const s = shell('M2', true);
+    add(s.main, text('Make it your search.', 29, 'Semi Bold', C.ink, 350), filters(350, true, true));
+    details('M3', true);
+    apply('M4', 0, true, false, true);
+    apply('M5', 1, true, false, true);
+    apply('M6', 2, true, false, true);
+    success('M7', true);
+    listings('M8', 'design', true);
+    const desktop = ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7', 'D8', 'D9', 'D10', 'D11', 'D12', 'D13'];
+    desktop.forEach((id, i) => { screens[id].x = i % 4 * 1550; screens[id].y = Math.floor(i / 4) * 1150; });
+    const mobile = ['M1', 'M2', 'M3', 'M4', 'M5', 'M6', 'M7', 'M8'];
+    mobile.forEach((id, i) => { screens[id].x = i * 470; screens[id].y = 4800; });
+    for (const l of links) {
+        if (!screens[l.to])
+            throw new Error('Missing target ' + l.to);
+        await l.node.setReactionsAsync([{ trigger: { type: 'ON_CLICK' }, actions: [{ type: 'NODE', destinationId: screens[l.to].id, navigation: 'NAVIGATE', transition, resetScrollPosition: true }] }]);
+    }
+    page.flowStartingPoints = [{ nodeId: screens.D1.id, name: 'Nextrole · Desktop search to application' }, { nodeId: screens.M1.id, name: 'Nextrole · Mobile search to application' }];
+    page.selection = [screens.D1];
+    figma.viewport.scrollAndZoomIntoView([screens.D1]);
+    figma.closePlugin('Created 21 editable screens, 5 component sets, and ' + links.length + ' navigation connections.');
+}
+run().catch(e => { console.error(e); figma.closePlugin('Could not finish: ' + String(e) + '. Existing pages were preserved. Inter fonts are required.'); });

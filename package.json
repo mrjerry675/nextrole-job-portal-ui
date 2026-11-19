@@ -1,0 +1,18 @@
+{
+  "name": "nextrole-job-portal-ui",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Responsive job search and application UI with editable Figma generator",
+  "author": "Fakiha Younas",
+  "scripts": {
+    "test": "node check-browser.cjs",
+    "screenshots": "node capture-portfolio.cjs",
+    "figma:build": "tsc --project figma-plugin/tsconfig.json",
+    "test:figma": "node check-figma.cjs"
+  },
+  "devDependencies": {
+    "@figma/plugin-typings": "1.142.0",
+    "playwright": "1.65.1",
+    "typescript": "7.0.2"
+  }
+}
